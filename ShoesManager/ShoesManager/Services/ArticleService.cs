@@ -1,4 +1,6 @@
-﻿using ShoesManager.Interfaces;
+﻿using ShoesManager.DTOs;
+using ShoesManager.Interfaces;
+using ShoesManager.Mappers;
 using ShoesManager.Models;
 using ShoesManager.Responses;
 using System.Linq.Expressions;
@@ -14,18 +16,91 @@ namespace ShoesManager.Services
             _articleRepository = articleRepository;
         }
 
-        public async Task<ApiResponse> CreateArticleAsync(Article article)
+        public async Task<ApiResponse> CreateArticleAsync(ArticleDTO articleDTO)
         {
             try
             {
-                // Validar que el artículo no sea nulo
-                if (article == null)
+                // Validar que el DTO no sea nulo
+                if (articleDTO == null)
                 {
-                    return new ApiResponse(Success: false, ErrorCode: 400, ErrorMessage: "Article cannot be null");
+                    return new ApiResponse(Success: false, ErrorCode: 400, ErrorMessage: "ArticleDTO cannot be null");
                 }
+
+                // Convertir el DTO a entidad
+                var article = ArticleMapper.ToEntity(articleDTO);
 
                 // Llamar al repositorio para crear el artículo
                 var result = await _articleRepository.CreateArticleAsync(article);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse(Success: false, ErrorCode: 500, ErrorMessage: ex.Message);
+            }
+        }
+
+        public async Task<ApiResponse<ArticleDTO>> GetArticleByIdAsync(int id)
+        {
+            try
+            {
+                // Validar que el ID sea válido
+                if (id <= 0)
+                {
+                    return new ApiResponse<ArticleDTO>(
+                        Success: false,
+                        ErrorCode: 400,
+                        ErrorMessage: "Invalid article ID",
+                        Data: null
+                    );
+                }
+
+                // Llamar al repositorio para obtener el artículo por ID
+                var result = await _articleRepository.GetArticleByIdAsync(id);
+                if (!result.Success || result.Data == null)
+                {
+                    return new ApiResponse<ArticleDTO>(
+                        Success: false,
+                        ErrorCode: 404,
+                        ErrorMessage: "Article not found",
+                        Data: null
+                    );
+                }
+
+                // Convertir la entidad a DTO
+                var articleDTO = ArticleMapper.FromEntity(result.Data, null).Item1;
+
+                return new ApiResponse<ArticleDTO>(
+                    Success: true,
+                    Data: articleDTO
+                );
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<ArticleDTO>(
+                    Success: false,
+                    ErrorCode: 500,
+                    ErrorMessage: ex.Message,
+                    Data: null
+                );
+            }
+        }
+
+        public async Task<ApiResponse> UpdateArticleAsync(ArticleDTO articleDTO)
+        {
+            try
+            {
+                // Validar que el DTO no sea nulo
+                if (articleDTO == null)
+                {
+                    return new ApiResponse(Success: false, ErrorCode: 400, ErrorMessage: "ArticleDTO cannot be null");
+                }
+
+                // Convertir el DTO a entidad
+                var article = ArticleMapper.ToEntity(articleDTO);
+
+                // Llamar al repositorio para actualizar el artículo
+                var result = await _articleRepository.UpdateArticleAsync(article);
 
                 return result;
             }
@@ -56,49 +131,33 @@ namespace ShoesManager.Services
             }
         }
 
-        public async Task<ApiResponse<IEnumerable<Article>>> GetAllArticlesAsync()
+        public async Task<ApiResponse<IEnumerable<ArticleDTO>>> GetAllArticlesAsync()
         {
             try
             {
                 // Llamar al repositorio para obtener todos los artículos
                 var result = await _articleRepository.GetAllArticlesAsync();
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                return new ApiResponse<IEnumerable<Article>>(
-                    Success: false,
-                    ErrorCode: 500,
-                    ErrorMessage: ex.Message,
-                    Data: null
-                );
-            }
-        }
-
-        public async Task<ApiResponse<Article>> GetArticleByIdAsync(int id)
-        {
-            try
-            {
-                // Validar que el ID sea válido
-                if (id <= 0)
+                if (!result.Success || result.Data == null)
                 {
-                    return new ApiResponse<Article>(
+                    return new ApiResponse<IEnumerable<ArticleDTO>>(
                         Success: false,
-                        ErrorCode: 400,
-                        ErrorMessage: "Invalid article ID",
+                        ErrorCode: 500,
+                        ErrorMessage: "Failed to retrieve articles",
                         Data: null
                     );
                 }
 
-                // Llamar al repositorio para obtener el artículo por ID
-                var result = await _articleRepository.GetArticleByIdAsync(id);
+                // Convertir las entidades a DTOs
+                var articleDTOs = ArticleMapper.FromEntity(null!, result.Data).Item2;
 
-                return result;
+                return new ApiResponse<IEnumerable<ArticleDTO>>(
+                    Success: true,
+                    Data: articleDTOs
+                );
             }
             catch (Exception ex)
             {
-                return new ApiResponse<Article>(
+                return new ApiResponse<IEnumerable<ArticleDTO>>(
                     Success: false,
                     ErrorCode: 500,
                     ErrorMessage: ex.Message,
@@ -107,14 +166,14 @@ namespace ShoesManager.Services
             }
         }
 
-        public async Task<ApiResponse<IEnumerable<Article>>> GetProductsByCriteriaAsync(Expression<Func<Article, bool>> predicate)
+        public async Task<ApiResponse<IEnumerable<ArticleDTO>>> GetProductsByCriteriaAsync(Expression<Func<Article, bool>> predicate)
         {
             try
             {
                 // Validar que el predicado no sea nulo
                 if (predicate == null)
                 {
-                    return new ApiResponse<IEnumerable<Article>>(
+                    return new ApiResponse<IEnumerable<ArticleDTO>>(
                         Success: false,
                         ErrorCode: 400,
                         ErrorMessage: "Predicate cannot be null",
@@ -124,38 +183,32 @@ namespace ShoesManager.Services
 
                 // Llamar al repositorio para obtener los artículos que cumplan con el criterio
                 var result = await _articleRepository.GetProductsByCriteriaAsync(predicate);
+                if (!result.Success || result.Data == null)
+                {
+                    return new ApiResponse<IEnumerable<ArticleDTO>>(
+                        Success: false,
+                        ErrorCode: 500,
+                        ErrorMessage: "Failed to retrieve articles",
+                        Data: null
+                    );
+                }
 
-                return result;
+                // Convertir las entidades a DTOs
+                var articleDTOs = ArticleMapper.FromEntity(null!, result.Data).Item2;
+
+                return new ApiResponse<IEnumerable<ArticleDTO>>(
+                    Success: true,
+                    Data: articleDTOs
+                );
             }
             catch (Exception ex)
             {
-                return new ApiResponse<IEnumerable<Article>>(
+                return new ApiResponse<IEnumerable<ArticleDTO>>(
                     Success: false,
                     ErrorCode: 500,
                     ErrorMessage: ex.Message,
                     Data: null
                 );
-            }
-        }
-
-        public async Task<ApiResponse> UpdateArticleAsync(Article article)
-        {
-            try
-            {
-                // Validar que el artículo no sea nulo
-                if (article == null)
-                {
-                    return new ApiResponse(Success: false, ErrorCode: 400, ErrorMessage: "Article cannot be null");
-                }
-
-                // Llamar al repositorio para actualizar el artículo
-                var result = await _articleRepository.UpdateArticleAsync(article);
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                return new ApiResponse(Success: false, ErrorCode: 500, ErrorMessage: ex.Message);
             }
         }
     }

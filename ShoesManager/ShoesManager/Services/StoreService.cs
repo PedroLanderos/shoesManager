@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using ShoesManager.DTOs;
 using ShoesManager.Interfaces;
+using ShoesManager.Mappers;
 using ShoesManager.Models;
 using ShoesManager.Responses;
 using System.Collections.Generic;
@@ -17,15 +18,18 @@ namespace ShoesManager.Services
             _storeRepository = storeRepository;
         }
 
-        public async Task<ApiResponse> CreateStoreAsync(Store store)
+        public async Task<ApiResponse> CreateStoreAsync(StoreDTO storeDTO)
         {
             try
             {
-                // Validar que la tienda no sea nula
-                if (store == null)
+                // Validar que el DTO no sea nulo
+                if (storeDTO == null)
                 {
-                    return new ApiResponse(Success: false, ErrorCode: 400, ErrorMessage: "Store cannot be null");
+                    return new ApiResponse(Success: false, ErrorCode: 400, ErrorMessage: "StoreDTO cannot be null");
                 }
+
+                // Convertir el DTO a entidad
+                var store = StoreMapper.ToEntity(storeDTO);
 
                 // Llamar al repositorio para crear la tienda
                 var result = await _storeRepository.CreateStoreAsync(store);
@@ -38,14 +42,14 @@ namespace ShoesManager.Services
             }
         }
 
-        public async Task<ApiResponse<Store>> GetStoreByIdAsync(int id)
+        public async Task<ApiResponse<StoreDTO>> GetStoreByIdAsync(int id)
         {
             try
             {
                 // Validar que el ID sea válido
                 if (id <= 0)
                 {
-                    return new ApiResponse<Store>(
+                    return new ApiResponse<StoreDTO>(
                         Success: false,
                         ErrorCode: 400,
                         ErrorMessage: "Invalid store ID",
@@ -55,12 +59,27 @@ namespace ShoesManager.Services
 
                 // Llamar al repositorio para obtener la tienda por ID
                 var result = await _storeRepository.GetStoreByIdAsync(id);
+                if (!result.Success || result.Data == null)
+                {
+                    return new ApiResponse<StoreDTO>(
+                        Success: false,
+                        ErrorCode: 404,
+                        ErrorMessage: "Store not found",
+                        Data: null
+                    );
+                }
 
-                return result;
+                // Convertir la entidad a DTO
+                var storeDTO = StoreMapper.FromEntity(result.Data, null).Item1;
+
+                return new ApiResponse<StoreDTO>(
+                    Success: true,
+                    Data: storeDTO
+                );
             }
             catch (Exception ex)
             {
-                return new ApiResponse<Store>(
+                return new ApiResponse<StoreDTO>(
                     Success: false,
                     ErrorCode: 500,
                     ErrorMessage: ex.Message,
@@ -69,15 +88,18 @@ namespace ShoesManager.Services
             }
         }
 
-        public async Task<ApiResponse> UpdateStoreAsync(Store store)
+        public async Task<ApiResponse> UpdateStoreAsync(StoreDTO storeDTO)
         {
             try
             {
-                // Validar que la tienda no sea nula
-                if (store == null)
+                // Validar que el DTO no sea nulo
+                if (storeDTO == null)
                 {
-                    return new ApiResponse(Success: false, ErrorCode: 400, ErrorMessage: "Store cannot be null");
+                    return new ApiResponse(Success: false, ErrorCode: 400, ErrorMessage: "StoreDTO cannot be null");
                 }
+
+                // Convertir el DTO a entidad
+                var store = StoreMapper.ToEntity(storeDTO);
 
                 // Llamar al repositorio para actualizar la tienda
                 var result = await _storeRepository.UpdateStoreAsync(store);
@@ -111,18 +133,33 @@ namespace ShoesManager.Services
             }
         }
 
-        public async Task<ApiResponse<IEnumerable<Store>>> GetAllStoresAsync()
+        public async Task<ApiResponse<IEnumerable<StoreDTO>>> GetAllStoresAsync()
         {
             try
             {
                 // Llamar al repositorio para obtener todas las tiendas
                 var result = await _storeRepository.GetAllStoresAsync();
+                if (!result.Success || result.Data == null)
+                {
+                    return new ApiResponse<IEnumerable<StoreDTO>>(
+                        Success: false,
+                        ErrorCode: 500,
+                        ErrorMessage: "Failed to retrieve stores",
+                        Data: null
+                    );
+                }
 
-                return result;
+                // Convertir las entidades a DTOs
+                var storeDTOs = StoreMapper.FromEntity(null!, result.Data).Item2;
+
+                return new ApiResponse<IEnumerable<StoreDTO>>(
+                    Success: true,
+                    Data: storeDTOs
+                );
             }
             catch (Exception ex)
             {
-                return new ApiResponse<IEnumerable<Store>>(
+                return new ApiResponse<IEnumerable<StoreDTO>>(
                     Success: false,
                     ErrorCode: 500,
                     ErrorMessage: ex.Message,
@@ -131,14 +168,14 @@ namespace ShoesManager.Services
             }
         }
 
-        public async Task<ApiResponse<IEnumerable<Store>>> GetStoreByCriteriaAsync(Expression<Func<Store, bool>> predicate)
+        public async Task<ApiResponse<IEnumerable<StoreDTO>>> GetStoreByCriteriaAsync(Expression<Func<Store, bool>> predicate)
         {
             try
             {
                 // Validar que el predicado no sea nulo
                 if (predicate == null)
                 {
-                    return new ApiResponse<IEnumerable<Store>>(
+                    return new ApiResponse<IEnumerable<StoreDTO>>(
                         Success: false,
                         ErrorCode: 400,
                         ErrorMessage: "Predicate cannot be null",
@@ -148,12 +185,27 @@ namespace ShoesManager.Services
 
                 // Llamar al repositorio para obtener las tiendas que cumplan con el criterio
                 var result = await _storeRepository.GetStoreByCriteriaAsync(predicate);
+                if (!result.Success || result.Data == null)
+                {
+                    return new ApiResponse<IEnumerable<StoreDTO>>(
+                        Success: false,
+                        ErrorCode: 500,
+                        ErrorMessage: "Failed to retrieve stores",
+                        Data: null
+                    );
+                }
 
-                return result;
+                // Convertir las entidades a DTOs
+                var storeDTOs = StoreMapper.FromEntity(null!, result.Data).Item2;
+
+                return new ApiResponse<IEnumerable<StoreDTO>>(
+                    Success: true,
+                    Data: storeDTOs
+                );
             }
             catch (Exception ex)
             {
-                return new ApiResponse<IEnumerable<Store>>(
+                return new ApiResponse<IEnumerable<StoreDTO>>(
                     Success: false,
                     ErrorCode: 500,
                     ErrorMessage: ex.Message,
